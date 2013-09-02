@@ -8,13 +8,13 @@ monitor.updateTable = function(element, data) {
 	if (element) {
 		var result = [];
 		var i = 0;
-	    for (var item in data) {
-	        if (!/.*\.stomp\./.test(data[item].name)) {
-	        	result[i++] = data[item];
-	        } else {
-	        	console.log("Not showing: " + JSON.stringify(data[item]));
-	        }
-	    }
+		for ( var item in data) {
+			if (!/.*\.stomp\./.test(data[item].name)) {
+				result[i++] = data[item];
+			} else {
+				console.log("Not showing: " + JSON.stringify(data[item]));
+			}
+		}
 		result.sort(function(one, two) {
 			if (one == two)
 				return 0;
@@ -42,33 +42,41 @@ monitor.scocket = null;
 
 monitor.staticUpdate = function(element, endpoint) {
 	if (element) {
-	    $.get(endpoint, function(input) {
-	        var data = [], i = 0;
-	        for (var key in input) {
-	            data[i++] = { name: key, value: input[key] };
-	        }
+		$.get(endpoint, function(input) {
+			var data = [], i = 0;
+			for ( var key in input) {
+				data[i++] = {
+					name : key,
+					value : input[key]
+				};
+			}
 			monitor.updateTable(element, data);
-	    });
+		});
 	}
 };
 
-monitor.open = function(ws,metrics) {
+monitor.open = function(ws, metrics) {
 	var element = $('#js-monitor');
 	if (!element) {
-	    return
-    }
+		return
+
+	}
 	monitor.staticUpdate(element, metrics);
-    monitor.socket = new SockJS(ws);
-    var client = Stomp.over(monitor.socket);
-    client.connect('guest', 'guest', function(frame) {
-	    console.log('Connected ' + frame);
-	    client.subscribe("/topic/metrics/*", function(message) {
-            var data = JSON.parse(message.body);
-		    monitor.updateRow($('#monbody'), $('#' + data.name.replace(/\./g,'\\.')), data, function() {
-		    	$('#icon\\.' + data.name.replace(/\./g,'\\.')).fadeOut('slow');
-		    });
-	    });
-    });
+	monitor.socket = new SockJS(ws);
+	var client = Stomp.over(monitor.socket);
+	client.connect('guest', 'guest', function(frame) {
+		console.log('Connected ' + frame);
+		client.subscribe("/topic/metrics/*", function(message) {
+			var data = JSON.parse(message.body);
+			if (!/.*\.stomp\./.test(data.name)) {
+				monitor.updateRow($('#monbody'), $('#'
+						+ data.name.replace(/\./g, '\\.')), data, function() {
+					$('#icon\\.' + data.name.replace(/\./g, '\\.')).fadeOut(
+							'slow');
+				});
+			}
+		});
+	});
 };
 
 $(window).load(function() {
