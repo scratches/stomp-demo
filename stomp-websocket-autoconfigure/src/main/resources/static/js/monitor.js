@@ -1,8 +1,8 @@
 window.monitor = window.monitor || {};
 
-monitor.table = '<table class="table"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>{{#metrics}}<tr id="{{name}}"><td>{{name}}</td><td>{{value}}</td></tr>{{/metrics}}</tbody></table>';
+monitor.table = '<table class="table"><thead><tr><th>Metric</th><th>Value</th><th></th></tr></thead><tbody id="monbody">{{#metrics}}<tr id="{{name}}"><td>{{name}}</td><td>{{value}}</td><td><i class="icon-flag" style="visibility:hidden"></i></td></tr>{{/metrics}}</tbody></table>';
 
-monitor.row = '<td>{{name}}</td><td>{{value}}</td>';
+monitor.row = '<tr id="{{name}}"><td>{{name}}</td><td>{{value}}</td><td><i id="icon.{{name}}" class="active icon-flag" style="font-color:red"></i></td></tr>';
 
 monitor.updateTable = function(element, data) {
 	if (element) {
@@ -28,11 +28,13 @@ monitor.updateTable = function(element, data) {
 	}
 };
 
-monitor.updateRow = function(element, data) {
+monitor.updateRow = function(parent, element, data, fader) {
 	if (element) {
-		element.mustache('monitorRow', data, {
-			method : "html"
+		element.remove();
+		parent.mustache('monitorRow', data, {
+			method : "prepend"
 		});
+		fader();
 	}
 };
 
@@ -62,7 +64,9 @@ monitor.open = function(ws,metrics) {
 	    console.log('Connected ' + frame);
 	    client.subscribe("/topic/metrics/*", function(message) {
             var data = JSON.parse(message.body);
-		    monitor.updateRow($('#' + data.name.replace(/\./g,'\\.')), data);
+		    monitor.updateRow($('#monbody'), $('#' + data.name.replace(/\./g,'\\.')), data, function() {
+		    	$('#icon\\.' + data.name.replace(/\./g,'\\.')).fadeOut('slow');
+		    });
 	    });
     });
 };
