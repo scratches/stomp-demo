@@ -7,4 +7,4 @@ applications:
   domain: cfapps.io
   path: stomp-websocket-autoconfigure/target/stomp-websocket-autoconfigure-0.5.0.BUILD-SNAPSHOT.jar
   buildpack: https://github.com/cloudfoundry/java-buildpack
-  memory: 1G
+  memory: 2G

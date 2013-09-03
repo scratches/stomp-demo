@@ -31,39 +31,51 @@ import org.springframework.messaging.simp.config.MessageBrokerConfigurer;
 import org.springframework.messaging.simp.config.StompEndpointRegistry;
 import org.springframework.messaging.simp.config.WebSocketMessageBrokerConfigurer;
 import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
 @Configuration
 @EnableWebSocketMessageBroker
-@ConditionalOnClass({ StompEndpointRegistry.class, MetricRepository.class})
+@ConditionalOnClass({ StompEndpointRegistry.class, MetricRepository.class })
 public class StompMetricsAutoConfiguration {
-	
+
+	@Configuration
+	public static class MonitorConfiguration extends WebMvcConfigurerAdapter {
+		@Override
+		public void addViewControllers(ViewControllerRegistry registry) {
+			registry.addViewController("/monitor").setViewName("monitor.html");
+		}
+	}
+
 	@Aspect
 	@Component
 	@EnableAspectJAutoProxy
-	public static class MetricInterceptor implements WebSocketMessageBrokerConfigurer {
+	public static class MetricInterceptor implements
+			WebSocketMessageBrokerConfigurer {
 
 		private static Log logger = LogFactory.getLog(MetricInterceptor.class);
-		
+
 		@Autowired
 		private MetricRepository metricRepository;
-		
+
 		@Override
 		public void registerStompEndpoints(StompEndpointRegistry registry) {
 			registry.addEndpoint("/stomp").withSockJS();
 		}
-		
+
 		@Override
 		public void configureMessageBroker(MessageBrokerConfigurer configurer) {
 			configurer.enableSimpleBroker("/topic/");
 		}
-		
+
 		@Autowired
 		private MessageSendingOperations<String> messagingTemplate;
 
 		@AfterReturning(pointcut = "(execution(* *..MetricRepository+.set(String,..)) || execution(* *..MetricRepository+.increment(String,..))) && target(repository) && args(name,..)")
 		public void broadcast(MetricRepository repository, String name) {
 			logger.debug("Updating: " + name);
-			messagingTemplate.convertAndSend("/topic/metrics/" + name, repository.findOne(name));
+			messagingTemplate.convertAndSend("/topic/metrics/" + name,
+					repository.findOne(name));
 		}
 
 	}

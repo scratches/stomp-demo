@@ -1,0 +1,9 @@
+---
+applications:
+- name: wsmontest
+  memory: 1G
+  instances: 1
+  host: wsmontest
+  domain: cfapps.io
+  path: target/spring-boot-sample-stomp-0.5.0.BUILD-SNAPSHOT.jar
+  buildpack: https://github.com/cloudfoundry/java-buildpack
