@@ -3,7 +3,7 @@ applications:
 - name: jsmon
   memory: 1G
   instances: 1
-  host: jsmon
+  host: monitor
   domain: cfapps.io
   path: stomp-websocket-autoconfigure/target/stomp-websocket-autoconfigure-0.5.0.BUILD-SNAPSHOT.jar
   buildpack: https://github.com/cloudfoundry/java-buildpack
