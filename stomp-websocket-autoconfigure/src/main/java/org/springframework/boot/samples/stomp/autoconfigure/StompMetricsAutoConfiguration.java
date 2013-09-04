@@ -16,23 +16,26 @@
 
 package org.springframework.boot.samples.stomp.autoconfigure;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.actuate.metrics.CounterService;
 import org.springframework.boot.actuate.metrics.MetricRepository;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.messaging.core.MessageSendingOperations;
 import org.springframework.messaging.simp.config.EnableWebSocketMessageBroker;
 import org.springframework.messaging.simp.config.MessageBrokerConfigurer;
 import org.springframework.messaging.simp.config.StompEndpointRegistry;
-import org.springframework.messaging.simp.config.WebSocketMessageBrokerConfigurer;
-import org.springframework.stereotype.Component;
+import org.springframework.messaging.simp.config.WebSocketMessageBrokerConfigurationSupport;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
+import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.WebSocketHandler;
+import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.support.WebSocketHandlerDecorator;
 
 @Configuration
 @EnableWebSocketMessageBroker
@@ -48,15 +51,34 @@ public class StompMetricsAutoConfiguration {
 	}
 
 	@Aspect
-	@Component
+	@Configuration
 	@EnableAspectJAutoProxy
-	public static class MetricInterceptor implements
-			WebSocketMessageBrokerConfigurer {
-
-		private static Log logger = LogFactory.getLog(MetricInterceptor.class);
+	public static class MetricInterceptor extends
+			WebSocketMessageBrokerConfigurationSupport {
 
 		@Autowired
-		private MetricRepository metricRepository;
+		private CounterService counterService;
+
+		@Override
+		@Bean
+		public WebSocketHandler subProtocolWebSocketHandler() {
+			return new WebSocketHandlerDecorator(
+					super.subProtocolWebSocketHandler()) {
+				@Override
+				public void afterConnectionClosed(WebSocketSession session,
+						CloseStatus closeStatus) throws Exception {
+					super.afterConnectionClosed(session, closeStatus);
+					counterService.decrement("webocket.session");
+				}
+
+				@Override
+				public void afterConnectionEstablished(WebSocketSession session)
+						throws Exception {
+					super.afterConnectionEstablished(session);
+					counterService.increment("webocket.session");
+				}
+			};
+		}
 
 		@Override
 		public void registerStompEndpoints(StompEndpointRegistry registry) {
@@ -72,8 +94,7 @@ public class StompMetricsAutoConfiguration {
 		private MessageSendingOperations<String> messagingTemplate;
 
 		@AfterReturning(pointcut = "(execution(* *..MetricRepository+.set(String,..)) || execution(* *..MetricRepository+.increment(String,..))) && target(repository) && args(name,..)")
-		public void broadcast(MetricRepository repository, String name) {
-			logger.debug("Updating: " + name);
+		public void broadcastMetrics(MetricRepository repository, String name) {
 			messagingTemplate.convertAndSend("/topic/metrics/" + name,
 					repository.findOne(name));
 		}
